@@ -5,7 +5,7 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: process.env.BASE_URL || '/Face_Attendance_Portal-Project/',
+  base: process.env.BASE_URL || '/face-attendance_portal/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
