@@ -34,7 +34,7 @@ export async function detectFace(imageElement) {
   }
 
   const detection = await faceapi
-    .detectSingleFace(imageElement, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+    .detectSingleFace(imageElement, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
     .withFaceLandmarks()
     .withFaceDescriptor();
 
@@ -48,7 +48,7 @@ export async function detectAllFaces(imageElement) {
   }
 
   const detections = await faceapi
-    .detectAllFaces(imageElement, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.3 }))
+    .detectAllFaces(imageElement, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
     .withFaceLandmarks()
     .withFaceDescriptors();
 
@@ -67,7 +67,7 @@ export function createFaceMatcher(registeredFaces) {
 
   if (labeledDescriptors.length === 0) return null;
 
-  return new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+  return new faceapi.FaceMatcher(labeledDescriptors, 0.45);
 }
 
 export async function getFaceDescriptor(imageElement) {

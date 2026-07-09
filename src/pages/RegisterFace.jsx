@@ -22,6 +22,7 @@ export default function RegisterFace() {
   const [notification, setNotification] = useState(null);
   const [registering, setRegistering] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   useEffect(() => {
     loadModels()
@@ -113,7 +114,7 @@ export default function RegisterFace() {
 
       try {
         const detections = await faceapi
-          .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+          .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.6 }))
           .withFaceLandmarks();
 
         const ctx = canvas.getContext('2d');
@@ -223,7 +224,7 @@ export default function RegisterFace() {
 
       let descriptor = null;
       let detection = await faceapi
-        .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.25 }))
+        .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptor();
 
@@ -231,7 +232,7 @@ export default function RegisterFace() {
 
       if (!descriptor) {
         const retry = await faceapi
-          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 }))
+          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
           .withFaceLandmarks()
           .withFaceDescriptor();
         if (retry) descriptor = retry.descriptor;
@@ -239,7 +240,7 @@ export default function RegisterFace() {
 
       if (!descriptor) {
         const all = await faceapi
-          .detectAllFaces(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.1 }))
+          .detectAllFaces(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
           .withFaceLandmarks()
           .withFaceDescriptors();
 
@@ -266,7 +267,7 @@ export default function RegisterFace() {
         return;
       }
 
-      registerFace(name.trim(), rollNumber.trim(), descriptor);
+      await registerFace(name.trim(), rollNumber.trim(), descriptor);
       showNotification(`${name.trim()} (${rollNumber.trim()}) registered successfully!`, 'success');
       setName('');
       setRollNumber('');
@@ -336,19 +337,32 @@ export default function RegisterFace() {
             )}
             {!isStreaming && !captured && (
               <div className="camera-placeholder">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <rect x="2" y="3" width="20" height="14" rx="2" />
-                  <circle cx="12" cy="10" r="3" />
-                  <path d="M6 17l2 3h8l2-3" />
-                </svg>
-                <p>Camera is off</p>
+                {loading ? (
+                  <div className="apple-spinner"></div>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                    <circle cx="12" cy="10" r="3" />
+                    <path d="M6 17l2 3h8l2-3" />
+                  </svg>
+                )}
+                <p>{loading ? 'Initializing camera...' : 'Camera is off'}</p>
               </div>
             )}
           </div>
 
           <div className="status-bar">
-            <div className={`status-dot ${isStreaming ? (faceDetected ? 'detected' : 'active') : ''}`} />
-            <span>{status}</span>
+            {loading ? (
+              <>
+                <div className="apple-spinner"></div>
+                <span>{status}</span>
+              </>
+            ) : (
+              <>
+                <div className={`status-dot ${isStreaming ? (faceDetected ? 'detected' : 'active') : ''}`} />
+                <span>{status}</span>
+              </>
+            )}
           </div>
 
           <div className="register-form">
@@ -441,11 +455,9 @@ export default function RegisterFace() {
                   </div>
                   <button
                     className="remove-btn"
-                    onClick={() => {
-                      removeFace(face.id);
-                      showNotification(`${face.name} removed.`, 'info');
-                    }}
+                    onClick={() => setConfirmDelete({ id: face.id, name: face.name })}
                     title="Remove"
+                    aria-label={`Remove ${face.name}`}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -458,6 +470,33 @@ export default function RegisterFace() {
           )}
         </div>
       </div>
+
+      {confirmDelete && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3>Remove Person?</h3>
+            <p>Are you sure you want to remove <strong>{confirmDelete.name}</strong>? This cannot be undone.</p>
+            <div className="modal-actions">
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setConfirmDelete(null)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger"
+                onClick={() => {
+                  removeFace(confirmDelete.id);
+                  showNotification(`${confirmDelete.name} removed.`, 'info');
+                  setConfirmDelete(null);
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AttendanceContext = createContext();
 
@@ -22,25 +23,53 @@ function isLegacyTestStudent(value) {
 }
 
 export function AttendanceProvider({ children }) {
-  const [registeredFaces, setRegisteredFaces] = useState(() => {
-    const saved = localStorage.getItem('registeredFaces');
-    if (!saved) return [];
-    return JSON.parse(saved).filter((face) => !isLegacyTestStudent(face?.name));
-  });
-
-  const [attendanceRecords, setAttendanceRecords] = useState(() => {
-    const saved = localStorage.getItem('attendanceRecords');
-    if (!saved) return [];
-    const cleaned = JSON.parse(saved).filter((record) => !isLegacyTestStudent(record?.personName));
-    return dedupeAttendanceRecords(cleaned);
-  });
+  const [registeredFaces, setRegisteredFaces] = useState([]);
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('registeredFaces', JSON.stringify(registeredFaces));
+    (async () => {
+      try {
+        const [faces, records] = await Promise.all([
+          AsyncStorage.getItem('registeredFaces'),
+          AsyncStorage.getItem('attendanceRecords'),
+        ]);
+
+        if (faces) {
+          const parsed = JSON.parse(faces).filter((f) => !isLegacyTestStudent(f?.name));
+          setRegisteredFaces(parsed);
+        }
+
+        if (records) {
+          const parsed = JSON.parse(records).filter((r) => !isLegacyTestStudent(r?.personName));
+          setAttendanceRecords(dedupeAttendanceRecords(parsed));
+        }
+      } catch (err) {
+        console.warn('Failed to load data:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await AsyncStorage.setItem('registeredFaces', JSON.stringify(registeredFaces));
+      } catch (err) {
+        console.error('Failed to save faces:', err);
+      }
+    })();
   }, [registeredFaces]);
 
   useEffect(() => {
-    localStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+    (async () => {
+      try {
+        await AsyncStorage.setItem('attendanceRecords', JSON.stringify(attendanceRecords));
+      } catch (err) {
+        console.error('Failed to save attendance:', err);
+      }
+    })();
   }, [attendanceRecords]);
 
   const registerFace = async (name, rollNumber, descriptor) => {
@@ -63,28 +92,25 @@ export function AttendanceProvider({ children }) {
   const markAttendance = async (personId, personName) => {
     const now = new Date();
     const today = now.toDateString();
-    let createdRecord = null;
 
-    setAttendanceRecords((prev) => {
-      const alreadyMarked = prev.some(
-        (r) => r.personId === personId && getDayKey(r.timestamp) === today
-      );
-      if (alreadyMarked) return prev;
+    const alreadyMarked = attendanceRecords.some(
+      (r) => r.personId === personId && getDayKey(r.timestamp) === today
+    );
 
-      createdRecord = {
-        id: Date.now().toString(),
-        personId,
-        personName,
-        timestamp: now.toISOString(),
-        date: now.toLocaleDateString(),
-        time: now.toLocaleTimeString(),
-        status: 'present',
-      };
+    if (alreadyMarked) return null;
 
-      return [createdRecord, ...prev];
-    });
+    const record = {
+      id: Date.now().toString(),
+      personId,
+      personName,
+      timestamp: now.toISOString(),
+      date: now.toLocaleDateString(),
+      time: now.toLocaleTimeString(),
+      status: 'present',
+    };
 
-    return createdRecord;
+    setAttendanceRecords((prev) => [record, ...prev]);
+    return record;
   };
 
   const clearAttendance = () => {
@@ -108,6 +134,7 @@ export function AttendanceProvider({ children }) {
         markAttendance,
         clearAttendance,
         getTodayAttendance,
+        loading,
       }}
     >
       {children}

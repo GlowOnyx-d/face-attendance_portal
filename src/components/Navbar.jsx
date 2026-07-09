@@ -2,8 +2,9 @@ import { NavLink } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import './Navbar.css';
 
-export default function Navbar() {
+export default function Navbar({ role, roleEmail, onSwitchRole }) {
   const { isDark, toggleTheme } = useTheme();
+  const isTeacher = role === 'teacher';
 
   return (
     <nav className="navbar">
@@ -12,7 +13,11 @@ export default function Navbar() {
           <circle cx="12" cy="8" r="4" />
           <path d="M4 20c0-4 4-6 8-6s8 2 8 6" />
         </svg>
-        <span className="navbar-title">Attendance-Portal</span>
+        <div className="navbar-brand-copy">
+          <span className="navbar-title">Attendance-Portal</span>
+          <span className="role-pill">{isTeacher ? 'Teacher Mode' : 'Student Mode'}</span>
+          {roleEmail && <span className="role-email-pill">{roleEmail}</span>}
+        </div>
       </div>
       <div className="navbar-links">
         <NavLink to="/" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'} end>
@@ -47,18 +52,31 @@ export default function Navbar() {
           </svg>
           Register
         </NavLink>
-        <NavLink to="/records" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+        {isTeacher && (
+          <NavLink to="/records" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+            </svg>
+            Records
+          </NavLink>
+        )}
+        <button className="role-switch-btn" onClick={onSwitchRole}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
+            <path d="M7 7h11" />
+            <path d="M7 7l3-3" />
+            <path d="M7 7l3 3" />
+            <path d="M17 17H6" />
+            <path d="M17 17l-3-3" />
+            <path d="M17 17l-3 3" />
           </svg>
-          Records
-        </NavLink>
-        <button className="theme-toggle" onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'}>
+          Change Role
+        </button>
+        <button className="theme-toggle" onClick={toggleTheme} title={isDark ? 'Light mode' : 'Dark mode'} aria-label="Toggle dark mode">
           {isDark ? (
-            <svg viewBox="0 0 24 24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="5" />
               <line x1="12" y1="1" x2="12" y2="3" />
               <line x1="12" y1="21" x2="12" y2="23" />
@@ -70,7 +88,7 @@ export default function Navbar() {
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
             </svg>
           ) : (
-            <svg viewBox="0 0 24 24" fill="currentColor">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
             </svg>
           )}

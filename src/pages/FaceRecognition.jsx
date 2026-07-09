@@ -1,7 +1,40 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAttendance } from '../context/AttendanceContext';
-import { loadModels, createFaceMatcher, faceapi } from '../utils/faceApi';
+import { loadModels, faceapi } from '../utils/faceApi';
+import { createConfetti } from '../utils/animations';
 import './FaceRecognition.css';
+
+const STRICT_MATCH_THRESHOLD = 0.38;
+const MIN_DISTANCE_MARGIN = 0.08;
+const REQUIRED_CONSECUTIVE_MATCHES = 4;
+const MARK_COOLDOWN_MS = 5000;
+
+function findBestLocalMatch(descriptor, registeredFaces, threshold = STRICT_MATCH_THRESHOLD) {
+  let bestMatch = null;
+  let bestDistance = Infinity;
+  let secondBestDistance = Infinity;
+
+  for (const face of registeredFaces) {
+    if (!face?.descriptor || face.descriptor.length === 0) continue;
+    const faceDescriptor = new Float32Array(face.descriptor);
+    const distance = faceapi.euclideanDistance(descriptor, faceDescriptor);
+
+    if (distance < bestDistance) {
+      secondBestDistance = bestDistance;
+      bestDistance = distance;
+      bestMatch = face;
+    } else if (distance < secondBestDistance) {
+      secondBestDistance = distance;
+    }
+  }
+
+  if (!bestMatch || bestDistance > threshold) return null;
+  if (Number.isFinite(secondBestDistance) && (secondBestDistance - bestDistance) < MIN_DISTANCE_MARGIN) {
+    return null;
+  }
+
+  return { face: bestMatch, distance: bestDistance };
+}
 
 export default function FaceRecognition() {
   const videoRef = useRef(null);
@@ -10,6 +43,8 @@ export default function FaceRecognition() {
   const animationRef = useRef(null);
   const registeredFacesRef = useRef([]);
   const lastRecognizedRef = useRef(null);
+  const candidateMatchRef = useRef({ id: null, name: '', count: 0 });
+  const markCooldownRef = useRef(new Map());
 
   const { registeredFaces, markAttendance, getTodayAttendance } = useAttendance();
 
@@ -62,7 +97,13 @@ export default function FaceRecognition() {
       setStatus('Camera active. Looking for faces...');
     } catch (err) {
       console.error('Camera error:', err);
-      setStatus('Could not access camera. Please allow camera permissions.');
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        showNotification('Camera permission denied. Please allow access in your browser settings.', 'error');
+        setStatus('Camera permission denied.');
+      } else {
+        showNotification('Could not access camera.', 'error');
+        setStatus('Camera error: ' + err.message);
+      }
     }
   };
 
@@ -78,6 +119,8 @@ export default function FaceRecognition() {
     setIsStreaming(false);
     setStatus('Camera stopped.');
     lastRecognizedRef.current = null;
+    candidateMatchRef.current = { id: null, name: '', count: 0 };
+    markCooldownRef.current.clear();
 
     const canvas = canvasRef.current;
     if (canvas) {
@@ -129,7 +172,7 @@ export default function FaceRecognition() {
         const currentFaces = registeredFacesRef.current;
 
         const detections = await faceapi
-          .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.4 }))
+          .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.7 }))
           .withFaceLandmarks()
           .withFaceDescriptors();
 
@@ -139,9 +182,12 @@ export default function FaceRecognition() {
         if (detections.length > 0) {
           console.log('Detected', detections.length, 'face(s)');
 
-          const faceMatcher = createFaceMatcher(currentFaces);
+          const sortedDetections = [...detections].sort(
+            (a, b) => (b.detection.box.width * b.detection.box.height) - (a.detection.box.width * a.detection.box.height)
+          );
+          const primaryDetection = sortedDetections[0];
 
-          for (const detection of detections) {
+          for (const detection of [primaryDetection]) {
             const box = detection.detection.box;
 
             // Mirror x-coordinate to match CSS scaleX(-1) on the video
@@ -155,30 +201,62 @@ export default function FaceRecognition() {
             let label = 'Unknown';
             let bgColor = '#dc2626';
 
-            if (faceMatcher) {
-              const match = faceMatcher.findBestMatch(detection.descriptor);
-              label = match.label;
-              console.log('Match result:', match.label, 'distance:', match.distance);
-
-              if (match.label !== 'unknown') {
+            try {
+              const localMatch = findBestLocalMatch(detection.descriptor, currentFaces, STRICT_MATCH_THRESHOLD);
+              if (localMatch) {
+                label = localMatch.face.name || 'Unknown';
                 bgColor = '#059669';
 
-                // Mark attendance if not already done
-                const face = currentFaces.find((f) => f.name === match.label);
-                if (face && match.distance < 0.5 && lastRecognizedRef.current !== face.id) {
-                  lastRecognizedRef.current = face.id;
-                  setMatchPulse(true);
-                  setTimeout(() => setMatchPulse(false), 700);
-                  const result = markAttendance(face.id, face.name);
-                  if (result) {
-                    showNotification(`Attendance marked for ${face.name}!`, 'success');
-                    setStatus(`${face.name} checked in successfully!`);
-                  } else {
-                    showNotification(`${face.name} already marked today.`, 'info');
-                    setStatus(`${face.name} already checked in today.`);
+                const faceId = localMatch.face.id;
+                const nowTs = Date.now();
+                if (candidateMatchRef.current.id === faceId) {
+                  candidateMatchRef.current.count += 1;
+                } else {
+                  candidateMatchRef.current = {
+                    id: faceId,
+                    name: localMatch.face.name,
+                    count: 1,
+                  };
+                }
+
+                if (faceId && lastRecognizedRef.current !== faceId) {
+                  const stableEnough = candidateMatchRef.current.count >= REQUIRED_CONSECUTIVE_MATCHES;
+                  const lastMarkedAt = markCooldownRef.current.get(faceId) || 0;
+                  const onCooldown = (nowTs - lastMarkedAt) < MARK_COOLDOWN_MS;
+
+                  if (!stableEnough) {
+                    setStatus(`Hold still: verifying ${localMatch.face.name} (${candidateMatchRef.current.count}/${REQUIRED_CONSECUTIVE_MATCHES})`);
+                  }
+
+                  if (stableEnough && !onCooldown) {
+                    markCooldownRef.current.set(faceId, nowTs);
+                    setMatchPulse(true);
+                    setTimeout(() => setMatchPulse(false), 700);
+
+                    try {
+                      const result = await markAttendance(faceId, localMatch.face.name);
+                      if (result) {
+                        lastRecognizedRef.current = faceId;
+                        createConfetti();
+                        showNotification(`Attendance marked for ${localMatch.face.name}!`, 'success');
+                        setStatus(`${localMatch.face.name} checked in successfully!`);
+                      } else {
+                        lastRecognizedRef.current = faceId;
+                        showNotification(`${localMatch.face.name} already marked today.`, 'info');
+                        setStatus(`${localMatch.face.name} already checked in today.`);
+                      }
+                    } catch (err) {
+                      console.error('Error marking attendance:', err);
+                      markCooldownRef.current.delete(faceId);
+                      showNotification('Error saving attendance', 'error');
+                    }
                   }
                 }
+              } else {
+                candidateMatchRef.current = { id: null, name: '', count: 0 };
               }
+            } catch (err) {
+              console.error('Local match error:', err);
             }
 
             // Draw label background
@@ -193,10 +271,15 @@ export default function FaceRecognition() {
             ctx.fillText(labelText, mirroredX + 6, box.y - 10);
           }
 
+          if (detections.length > 1) {
+            setStatus('Multiple faces detected. Keep only one face in frame for strict check-in.');
+          }
+
           if (detections.length > 0 && !registeredFacesRef.current.length) {
             setStatus('Face detected! Register people first to identify them.');
           }
         } else {
+          candidateMatchRef.current = { id: null, name: '', count: 0 };
           setStatus('No face detected. Position your face in the frame.');
         }
       } catch (err) {
@@ -281,8 +364,17 @@ export default function FaceRecognition() {
           </div>
 
           <div className="status-bar">
-            <div className={`status-dot ${isStreaming ? 'active' : ''}`} />
-            <span>{status}</span>
+            {loading ? (
+              <>
+                <div className="apple-spinner"></div>
+                <span>{status}</span>
+              </>
+            ) : (
+              <>
+                <div className={`status-dot ${isStreaming ? 'active' : ''}`} />
+                <span>{status}</span>
+              </>
+            )}
           </div>
 
           <div className="camera-controls">

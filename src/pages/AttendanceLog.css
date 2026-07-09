@@ -50,12 +50,12 @@
   display: flex;
   align-items: center;
   gap: 24px;
-  background: #fff;
-  padding: 20px 28px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+  padding: 24px 28px;
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f3f4f6;
-  margin-bottom: 24px;
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(10px);
 }
 
 .summary-item {
@@ -64,9 +64,12 @@
 }
 
 .summary-value {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1e1b4b;
+  font-size: 26px;
+  font-weight: 900;
+  color: transparent;
+  background: linear-gradient(to right, #667eea, #764ba2, #f93b1d);
+  -webkit-background-clip: text;
+  background-clip: text;
 }
 
 .summary-label {
@@ -139,11 +142,12 @@
 }
 
 .records-table-wrapper {
-  background: #fff;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
   border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  border: 1px solid #f3f4f6;
+  box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   overflow: hidden;
+  backdrop-filter: blur(10px);
 }
 
 .records-table {
@@ -152,7 +156,8 @@
 }
 
 .records-table thead {
-  background: #f9fafb;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.05));
+  border-bottom: 2px solid rgba(102, 126, 234, 0.15);
 }
 
 .records-table th {
@@ -178,7 +183,7 @@
 }
 
 .records-table tbody tr:hover {
-  background: #f9fafb;
+  background: linear-gradient(90deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.03));
 }
 
 .record-person {
@@ -188,16 +193,17 @@
 }
 
 .record-avatar {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 14px;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   flex-shrink: 0;
 }
 

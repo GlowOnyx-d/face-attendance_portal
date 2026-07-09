@@ -128,7 +128,7 @@ export default function UploadAttendance() {
 
     try {
       const detections = await faceapi
-        .detectAllFaces(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.35 }))
+        .detectAllFaces(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
         .withFaceLandmarks()
         .withFaceDescriptors();
 
@@ -158,7 +158,7 @@ export default function UploadAttendance() {
         }
 
         const bestMatch = matcher.findBestMatch(detection.descriptor);
-        if (bestMatch.label === 'unknown' || bestMatch.distance >= 0.5) {
+        if (bestMatch.label === 'unknown' || bestMatch.distance >= 0.45) {
           labels.push('Unknown');
           unknown += 1;
           continue;
@@ -182,7 +182,7 @@ export default function UploadAttendance() {
         }
         seenIdsInThisImage.add(matchedFace.id);
 
-        const attendance = markAttendance(matchedFace.id, matchedFace.name);
+        const attendance = await markAttendance(matchedFace.id, matchedFace.name);
         if (attendance) {
           marked += 1;
         } else {
@@ -248,8 +248,17 @@ export default function UploadAttendance() {
       <div className="upload-layout">
         <section className="upload-panel card">
           <div className="status-bar">
-            <div className={`status-dot ${modelsReady ? 'active' : ''}`} />
-            <span>{loading ? 'Loading models...' : status}</span>
+            {loading ? (
+              <>
+                <div className="apple-spinner"></div>
+                <span>Loading face recognition models...</span>
+              </>
+            ) : (
+              <>
+                <div className={`status-dot ${modelsReady ? 'active' : ''}`} />
+                <span>{status}</span>
+              </>
+            )}
           </div>
 
           <div className="upload-controls">
