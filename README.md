@@ -4,7 +4,7 @@ A modern, full-stack face recognition attendance system built with React, TypeSc
 
 ## Features
 
-✨ **Core Features**
+**Core Features**
 - Real-time face recognition & attendance marking
 - User authentication with JWT
 - Role-based access control (Admin, Employee, Manager)
@@ -12,7 +12,7 @@ A modern, full-stack face recognition attendance system built with React, TypeSc
 - CSV export/import for attendance records
 - Responsive UI with Tailwind CSS & Dark Mode
 
-🚀 **Production Ready**
+**Production Ready**
 - TypeScript for type safety
 - Proper error handling & validation
 - Docker & Docker Compose support
@@ -20,7 +20,7 @@ A modern, full-stack face recognition attendance system built with React, TypeSc
 - Comprehensive logging
 - Security best practices
 
-📊 **Advanced Features**
+**Advanced Features**
 - Attendance analytics & statistics
 - Daily/monthly attendance reports
 - Bulk attendance operations
@@ -225,7 +225,7 @@ MIT License
 
 ---
 
-Built with ❤️ for modern attendance systems
+For modern attendance systems
 
 An example is included in `.env.example`.
 
