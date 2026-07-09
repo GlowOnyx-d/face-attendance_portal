@@ -69,14 +69,14 @@ function RoleSelection({ onSelectRole }) {
         <p>Choose your role to continue. You can change this anytime from the sidebar.</p>
         <div className="role-selection-actions">
           <button
-            className="btn btn-primary role-option"
+            className={`btn role-option ${selectedRole === 'teacher' ? 'selected' : ''}`}
             onClick={() => handleChooseRole('teacher')}
           >
             <span className="role-option-title">Teacher</span>
             <span className="role-option-subtitle">Full access including attendance records</span>
           </button>
           <button
-            className="btn btn-secondary role-option"
+            className={`btn role-option ${selectedRole === 'student' ? 'selected' : ''}`}
             onClick={() => handleChooseRole('student')}
           >
             <span className="role-option-title">Student</span>

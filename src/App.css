@@ -270,6 +270,7 @@ body {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 12px;
+  color: #111827;
   transition: all 0.2s;
   cursor: pointer;
 }
@@ -277,6 +278,19 @@ body {
 [data-theme='dark'] .role-option {
   background: #111827;
   border-color: #374151;
+  color: #f9fafb;
+}
+
+.role-option.selected {
+  border-color: #0071E3;
+  box-shadow: 0 0 0 1px #0071E3;
+  background: #f0f7ff;
+}
+
+[data-theme='dark'] .role-option.selected {
+  border-color: #0071E3;
+  box-shadow: 0 0 0 1px #0071E3;
+  background: rgba(0, 113, 227, 0.1);
 }
 
 .role-option:hover {
