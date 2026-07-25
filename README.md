@@ -271,3 +271,4 @@ npm run dev:client
 - For production, migrate to a real database and add authentication + HTTPS.
 yolo test
 pair extraordinaire test
+pair extraordinaire retry
